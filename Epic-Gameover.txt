@@ -1,0 +1,763 @@
+Events.PlayerMeleeActionCallback m_playerMeleeActionEvent = null;
+Events.UserMessageCallback m_userMessageCallback = null;
+
+/*
+const string    AcidSplash = "ACS";
+const string    Block = "Block";
+const string    Blood = "BLD";
+const string    BloodTrail = "TR_B";
+const string    BulletHit = "BulletHit";
+const string    BulletHitCloth = "BulletHitCloth";
+const string    BulletHitDefault = "BulletHitDefault";
+const string    BulletHitDirt = "BulletHitDirt";
+const string    BulletHitMetal = "BulletHitMetal";
+const string    BulletHitMoney = "BulletHitMoney";
+const string    BulletHitPaper = "BulletHitPaper";
+const string    BulletHitWood = "BulletHitWood";
+const string    ChainsawSmoke = "CSW";
+const string    ClothHit = "CL_H";
+const string    CloudDissolve = "DISS";
+const string    DestroyCloth = "DestroyCloth";
+const string    DestroyDefault = "DestroyDefault";
+const string    DestroyGlass = "DestroyGlass";
+const string    DestroyMetal = "DestroyMetal";
+const string    DestroyPaper = "DestroyPaper";
+const string    DestroyWood = "DestroyWood";
+const string    Dig = "DIG";
+const string    DustTrail = "TR_D";
+const string    Electric = "Electric";
+const string    Explosion = "EXP";
+const string    Fire = "FIRE";
+const string    FireNodeTrailAir = "FNDTRA";
+const string    FireNodeTrailGround = "FNDTRG";
+const string    FireTrail = "TR_F";
+const string    Gib = "GIB";
+const string    GlassParticles = "G_P";
+const string    GrenadeDud = "GR_D";
+const string    ImpactDefault = "ImpactDefault";
+const string    ImpactPaper = "ImpactPaper";
+const string    ItemGleam = "GLM";
+const string    MeleeHitBlunt = "HIT_B";
+const string    MeleeHitSharp = "HIT_S";
+const string    MeleeHitUnarmed = "HIT_U";
+const string    PaperDestroyed = "PPR_D";
+const string    PlayerBurned = "PLRB";
+const string    PlayerFootstep = "F_S";
+const string    PlayerLandFull = "H_T";
+const string    Smack = "Smack";
+const string    SmokeTrail = "TR_S";
+const string    Sparks = "S_P";
+const string    Steam = "STM";
+const string    WaterSplash = "WS";
+const string    WoodParticles = "W_P";
+*/
+
+Color tealGreen = new Color(102, 255, 51);
+
+
+bool roundStartMessageIsMuted = false;
+string particle = "FIRE";
+float scale = 2.0f;
+string animation = "pentagram";
+
+
+//We use this to get the points in a line
+//https://stackoverflow.com/a/34142336/11490425
+public class Line {
+	public Vector2 p1, p2;
+
+	public Line(Vector2 p1, Vector2 p2) {
+		this.p1 = p1;
+		this.p2 = p2;
+	}
+
+	//this will return a Point array of "quantity" points evenly spaced between the two endpoints (inclusive). 
+	public Vector2[] getPoints(ushort quantity) {
+		var points = new Vector2[quantity];
+		float ydiff = p2.Y - p1.Y, xdiff = p2.X - p1.X;
+		double slope = (double)(p2.Y - p1.Y) / (p2.X - p1.X);
+		double x, y;
+
+		--quantity;
+
+		for (double i = 0; i < quantity; i++) {
+			y = slope == 0 ? 0 : ydiff * (i / quantity);
+			x = slope == 0 ? xdiff * (i / quantity) : y / slope;
+			points[(int)i] = new Vector2((int)Math.Round(x) + p1.X, (int)Math.Round(y) + p1.Y);
+		}
+
+		points[quantity] = p2;
+		return points;
+	}
+}
+
+
+//Every line is in a group. This matrix stores those groups of lines
+List<List<Line>> groupsListMatrix = new List<List<Line>>();
+
+//This is the simple list that stores a list of points for Animate() to draw
+List<Vector2> pointsList = new List<Vector2>();
+
+//A global tracker because timers can't pass parameters
+int pointTracker = -1;
+
+//A switch to prevent the pointsList from being overwritten while it's being drawn 
+bool allLinesHaveBeenAdded = false;
+bool firstAnimateRun = true;
+
+//This is the actual function that draws the animation.
+public void Animate(TriggerArgs args){
+	if (firstAnimateRun && allLinesHaveBeenAdded) {
+		//This is the first run of Animate
+		//Calculate all points from the lineList and add them into pointsList
+
+		for(ushort groupCounter = 0; groupCounter < groupsListMatrix.Count; groupCounter++){
+			List<List<Vector2>> middlemanMatrix = new List<List<Vector2>>();
+			
+			for(ushort lineCounter = 0; lineCounter < groupsListMatrix[groupCounter].Count; lineCounter++){
+				Vector2[] points = groupsListMatrix[groupCounter][lineCounter].getPoints(10);
+				middlemanMatrix.Add(new List<Vector2>());
+				
+				for(ushort pointCounter = 0; pointCounter < points.Length; pointCounter++){
+					middlemanMatrix[lineCounter].Add(points[pointCounter]);
+				}
+			}
+			//transpose middlemanMatrix
+			List<List<Vector2>> transposedMiddlemanMatrix = Transpose(middlemanMatrix);
+
+			//Add the points to pointsList
+			for(ushort column = 0; column < transposedMiddlemanMatrix.Count; column++){
+				for(ushort row = 0; row < transposedMiddlemanMatrix[column].Count; row++){
+					pointsList.Add(transposedMiddlemanMatrix[column][row]);
+				}
+			}
+
+		}
+
+		
+		firstAnimateRun = false;
+		//Reset the point tracker
+		pointTracker=-1;
+	}
+
+	pointTracker++;
+	
+	if(pointTracker >= pointsList.Count){
+		//Clear the counters
+		groupsListMatrix = new List<List<Line>>();
+		pointsList = new List<Vector2>();
+		pointTracker = -1;
+		firstAnimateRun = true;
+	} else {
+		Game.PlayEffect(particle, pointsList[pointTracker]);
+	}
+
+
+}
+
+
+//This function transposes a List<List<Vector2>> matrix
+//https://stackoverflow.com/a/13586633/11490425
+public static List<List<Vector2>> Transpose<Vector2>(List<List<Vector2>> lists){
+	var longest = lists.Any() ? lists.Max(l => l.Count) : 0;
+	List<List<Vector2>> outer = new List<List<Vector2>>(longest);
+	for (int i = 0; i < longest; i++)
+		outer.Add(new List<Vector2>(lists.Count));
+	for (int j = 0; j < lists.Count; j++)
+		for (int i = 0; i < longest; i++)
+			outer[i].Add(lists[j][i]);
+	return outer;
+}
+
+
+public void OnStartup() {
+	//m_playerMeleeActionEvent = Events.PlayerMeleeActionCallback.Start(OnPlayerMeleeAction);
+	m_userMessageCallback = Events.UserMessageCallback.Start(OnUserMessage);
+
+	//Load local storage
+	loadLocalStorage();
+
+	if(!roundStartMessageIsMuted){
+		Game.ShowChatMessage("Epic-Gameover: Run \"/ego help\" for config options.", Color.Green);
+	}
+
+	//create a trigger for gameover
+	IObjectOnGameOverTrigger gameoverTrigger = (IObjectOnGameOverTrigger)Game.CreateObject("OnGameOverTrigger");
+	gameoverTrigger.SetScriptMethod("GameOverCallBack");
+	
+}
+
+Vector2 averageLocationOfLivingPlayers = new Vector2();
+
+public void GameOverCallBack(TriggerArgs args) {
+	//Get the average location of all living players
+	List<Vector2> livingPlayerLocations = new List<Vector2>();
+	IPlayer[] players = Game.GetPlayers();
+	foreach(IPlayer player in players){
+		if(!player.IsDead){
+			livingPlayerLocations.Add(player.GetWorldPosition());
+		}
+	}
+
+	float xAverage = 0f;
+	float yAverage = 0f;
+	ushort playerCounter = 0;
+	for(; playerCounter < livingPlayerLocations.Count; playerCounter++){
+		xAverage += livingPlayerLocations[playerCounter].X;
+		yAverage += livingPlayerLocations[playerCounter].Y;
+	}
+	xAverage = xAverage / (float)playerCounter;
+	yAverage = yAverage / (float)playerCounter;
+		
+	averageLocationOfLivingPlayers = new Vector2(xAverage, yAverage);
+
+	//Depending on which animation was selected...
+	switch(animation){
+		case "triangle":
+			startTimer(1800, 5, "drawTriangle");
+		break;
+		
+		case "pentagram":
+			startTimer(1500, 5, "drawPentagram");
+		break;
+
+		case "cube":
+			startTimer(1800, 5, "drawCube");
+		break;
+
+		case "uwu":
+			startTimer(1800, 5, "drawUwU");
+		break;
+		
+	}
+}
+
+//See: triangle.jpg
+public void drawTriangle(TriggerArgs args){
+
+	//These "magical numbers" where extracted from a Geogebra model of triangle.jpg
+	//simple middle points
+	Vector2 upperMiddle = new Vector2(0f * scale, 31f * scale);
+	Vector2 rightMiddle = new Vector2(26.8f * scale, -15f * scale);
+	Vector2 leftMiddle  = new Vector2(-26.8f * scale, -15f * scale);
+
+	//corners
+	Vector2 rightCorner = new Vector2(53f * scale, 31f * scale);
+	Vector2 lowerCorner = new Vector2(0f * scale, -60.5f * scale);
+	Vector2 leftCorner  = new Vector2(-53f * scale, 31f * scale);
+	
+	//Inner middle points
+	Vector2 upperRightMiddle = new Vector2(26.8f * scale, 16f * scale);
+	Vector2 lowerMiddle      = new Vector2(0f * scale, -30.5f * scale);
+	Vector2 upperLeftMiddle  = new Vector2(-26.8f * scale, 16f * scale);
+
+	//Draw the funky triangle
+	//First three lines
+	//We use an empty offset on these lines because they come from the player direct's location
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, new Vector2(0f, 0f), upperMiddle),
+		calculateLine(averageLocationOfLivingPlayers, new Vector2(0f, 0f), rightMiddle),
+		calculateLine(averageLocationOfLivingPlayers, new Vector2(0f, 0f), leftMiddle),
+	});
+
+	
+	//Border lines
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, upperMiddle, rightCorner),
+		calculateLine(averageLocationOfLivingPlayers, upperMiddle, leftCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, rightMiddle, rightCorner),
+		calculateLine(averageLocationOfLivingPlayers, rightMiddle, lowerCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, leftMiddle, lowerCorner),
+		calculateLine(averageLocationOfLivingPlayers, leftMiddle, leftCorner)
+	});
+
+	
+	//inner middle lines
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, rightCorner, upperRightMiddle),
+		calculateLine(averageLocationOfLivingPlayers, lowerCorner, lowerMiddle),
+		calculateLine(averageLocationOfLivingPlayers, leftCorner, upperLeftMiddle),
+	});
+
+
+	//Inner square
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, upperMiddle, upperRightMiddle),
+		calculateLine(averageLocationOfLivingPlayers, upperMiddle, upperLeftMiddle),
+
+		calculateLine(averageLocationOfLivingPlayers, rightMiddle, upperRightMiddle),
+		calculateLine(averageLocationOfLivingPlayers, rightMiddle, lowerMiddle),
+
+		calculateLine(averageLocationOfLivingPlayers, leftMiddle, lowerMiddle),
+		calculateLine(averageLocationOfLivingPlayers, leftMiddle, upperLeftMiddle),
+	});
+		
+	allLinesHaveBeenAdded = true;
+
+	//I use three timers to make the animation faster
+	//Formula:
+	//1, (numberOfLinesInGroup/numberOfTimers * 10) + 1, "Animate"
+	startTimer(1, (6 * 10) + 1, "Animate");
+	startTimer(1, (6 * 10) + 1, "Animate");
+	startTimer(1, (6 * 10) + 1, "Animate");
+}
+
+//See pentagram.jpg
+public void drawPentagram(TriggerArgs args){
+
+
+	//I made the geogebra model too small :P
+	float customScale = scale + 2.128f;
+
+	//middle points
+	Vector2 middleUpperRight = new Vector2(6f * customScale, 8f * customScale);
+	Vector2 middleRight      = new Vector2(9.7f * customScale, -3.2f * customScale);
+	Vector2 middleBottom     = new Vector2(0f * customScale, -10f * customScale);
+	Vector2 middleLeft       = new Vector2(-9.7f * customScale, -3.2f * customScale);
+	Vector2 middleUpperLeft  = new Vector2(-6f * customScale, 8f * customScale);
+
+	//Corners
+	Vector2 topCorner         = new Vector2(0f * customScale, 26.5f * customScale);
+	Vector2 rightCorner       = new Vector2(24.9f * customScale, 8f * customScale);
+	Vector2 bottomRightCorner = new Vector2(15.3f * customScale, -21.3f * customScale);
+	Vector2 bottomLeftCorner  = new Vector2(-15.3f * customScale, -21.3f * customScale);
+	Vector2 leftCorner        = new Vector2(-24.9f * customScale, 8f * customScale);
+
+	//I won't even try to explain this. You'll have to see it in-game
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, middleUpperRight, topCorner),
+		calculateLine(averageLocationOfLivingPlayers, middleUpperRight, bottomRightCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, middleRight, rightCorner),
+		calculateLine(averageLocationOfLivingPlayers, middleRight, bottomLeftCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, middleBottom, bottomRightCorner),
+		calculateLine(averageLocationOfLivingPlayers, middleBottom, leftCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, middleLeft, topCorner),
+		calculateLine(averageLocationOfLivingPlayers, middleLeft, bottomLeftCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, middleUpperLeft, rightCorner),
+		calculateLine(averageLocationOfLivingPlayers, middleUpperLeft, leftCorner)
+	});
+
+
+	//We need to draw a circle. For that, we'll have to add our points directly to pointsList
+	//Calculate all points in a circle
+	float radius = rightCorner.X;
+	ushort angle = 0;
+	ushort angleIncrement = 5;
+	ushort circlePrecisionLevel = (ushort)(360/angleIncrement);
+
+	//https://stackoverflow.com/a/14096170/11490425
+	for(ushort pointCounter = 0; pointCounter <= circlePrecisionLevel; pointCounter++ ){
+
+		pointsList.Add(new Vector2((float)(averageLocationOfLivingPlayers.X + (radius * Math.Cos(angle))), (float)(averageLocationOfLivingPlayers.Y + (radius * Math.Sin(angle)))));
+		angle += angleIncrement;
+	}
+
+
+	allLinesHaveBeenAdded = true;
+
+
+	//I use multiple timers to make the animation faster in certain steps
+	//circle timers
+	startTimer(1, (circlePrecisionLevel/2) + 1, "Animate");
+	startTimer(1, (circlePrecisionLevel/2) + 1, "Animate");
+
+	//lines timers
+	//The first animation group has 5 lines
+	//timeInMilisecondsBetWeenEachLoop, (numberOfLinesInGroup/numberOfTimers * numberOfPointsPerLine) + 1
+	startTimer(1, (5 * 10) + 1, "Animate");
+	startTimer(1, (5 * 10) + 1, "Animate");
+}
+
+public void drawCube(TriggerArgs args){
+	//this animation is kinda lame ngl
+
+	//inner corners
+	Vector2 innerTopCorner    = new Vector2(0f * scale, 24.8f * scale);
+	Vector2 innerRightCorner  = new Vector2(24.8f * scale, 0f * scale);
+	Vector2 innerBottomCorner = new Vector2(0f * scale, -24.8f * scale);
+	Vector2 innerLeftCorner   = new Vector2(-24.8f * scale, 0f * scale);
+
+	//middle Edges
+	Vector2 middleTopRight    = new Vector2(49.75f * scale, 24.75f * scale);
+	Vector2 middleBottomRight = new Vector2(24.75f * scale, -49.75f * scale);
+	Vector2 middleBottomLeft  = new Vector2(-49.75f * scale, -24.75f * scale);
+	Vector2 middleTopLeft     = new Vector2(-24.75f * scale, 49.75f * scale);
+
+	//cuadrants
+	Vector2 cuadrantOne   = new Vector2(24.875f * scale, 25f * scale);
+	Vector2 cuadrantTwo   = new Vector2(25f * scale, -24.875f * scale);
+	Vector2 cuadrantThree = new Vector2(-24.875f * scale, -25f * scale);
+	Vector2 cuadrantFour  = new Vector2(-25f * scale, 24.875f * scale);
+
+	//middle points
+	Vector2 middleTop = new Vector2(0f * scale, 49.75f * scale);
+	Vector2 middleRight = new Vector2(49.75f * scale, 0f * scale);
+	Vector2 middleBottom = new Vector2(0f * scale, -49.75f * scale);
+	Vector2 middleLeft = new Vector2(-49.75f * scale, 0f * scale);
+
+	//corners
+	Vector2 cornerTopRight = new Vector2(49.75f * scale, 49.75f * scale);
+	Vector2 cornerBottomRight = new Vector2(49.75f * scale, -49.75f * scale);
+	Vector2 cornerBottomLeft = new Vector2(-49.75f * scale, -49.75f * scale);
+	Vector2 cornerTopLeft = new Vector2(-49.75f * scale, 49.75f * scale);
+
+	//Inner square with extending lines
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, innerTopCorner, innerRightCorner),
+		calculateLine(averageLocationOfLivingPlayers, innerTopCorner, middleTopLeft),
+
+		calculateLine(averageLocationOfLivingPlayers, innerRightCorner, middleTopRight),
+		calculateLine(averageLocationOfLivingPlayers, innerRightCorner, innerBottomCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, innerBottomCorner, middleBottomRight),
+		calculateLine(averageLocationOfLivingPlayers, innerBottomCorner, innerLeftCorner),
+
+		calculateLine(averageLocationOfLivingPlayers, innerLeftCorner, innerTopCorner),
+		calculateLine(averageLocationOfLivingPlayers, innerLeftCorner, middleBottomLeft)
+	});
+
+	//"flaps"
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, cuadrantOne, cornerTopRight),
+		calculateLine(averageLocationOfLivingPlayers, cuadrantOne, middleTop),
+
+		calculateLine(averageLocationOfLivingPlayers, cuadrantTwo, middleRight),
+		calculateLine(averageLocationOfLivingPlayers, cuadrantTwo, cornerBottomRight),
+
+		calculateLine(averageLocationOfLivingPlayers, cuadrantThree, middleBottom),
+		calculateLine(averageLocationOfLivingPlayers, cuadrantThree, cornerBottomLeft),
+
+		calculateLine(averageLocationOfLivingPlayers, cuadrantFour, middleLeft),
+		calculateLine(averageLocationOfLivingPlayers, cuadrantFour, cornerTopLeft)
+	});
+
+	//edges
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, cornerTopLeft, middleTop),
+		calculateLine(averageLocationOfLivingPlayers, middleTop, cornerTopRight),
+
+		calculateLine(averageLocationOfLivingPlayers, cornerBottomRight, middleBottom),
+		calculateLine(averageLocationOfLivingPlayers, middleBottom, cornerBottomLeft)
+	});
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, cornerTopRight, middleRight),
+		calculateLine(averageLocationOfLivingPlayers, middleRight, cornerBottomRight),
+
+		calculateLine(averageLocationOfLivingPlayers, cornerBottomLeft, middleLeft),
+		calculateLine(averageLocationOfLivingPlayers, middleLeft, cornerTopLeft)
+	});
+
+	allLinesHaveBeenAdded = true;
+
+	//lines timers
+	//both animation groups have 8 lines
+	//timeInMilisecondsBetWeenEachLoop, (numberOfLinesInGroup/numberOfTimers * numberOfPointsPerLine) + 1
+	//inner square animators
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+
+	//flaps animators
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+	startTimer(1, (2 * 10) + 1, "Animate");
+
+	//edge animators
+	startTimer(1, (4 * 10) + 1, "Animate");
+	startTimer(1, (4 * 10) + 1, "Animate");
+}
+
+public void drawUwU(TriggerArgs args){
+
+	//I made the geogebra model too small :P
+	float customScale = scale + 1.5f;
+	//This animation looks best with the Smoke particle ("STM")
+
+    //w
+    Vector2 wBottomLeft = new Vector2(-5f * customScale, -3.5f * customScale);
+    Vector2 wBottomRight = new Vector2(5f * customScale, -3.5f * customScale);
+    Vector2 wTopLeft = new Vector2(-10f * customScale, 10f * customScale);
+    Vector2 wTopMiddle = new Vector2(0f * customScale, 10f * customScale);
+    Vector2 wTopRight = new Vector2(10f * customScale, 10f * customScale);
+
+    //Left "U"
+    Vector2 uLeftTopLeft = new Vector2(-31f * customScale, 16f * customScale);
+    Vector2 uLeftBottomLeft = new Vector2(-30.5f * customScale, 0f * customScale);
+    Vector2 uLeftBottom = new Vector2(-24f * customScale, -4.25f * customScale);
+    Vector2 uLeftBottomRight = new Vector2(-17.5f * customScale, 0f * customScale);
+    Vector2 uLeftTopRight = new Vector2(-16.75f * customScale, 16f * customScale);
+    
+    //Right "U"
+    Vector2 uRightTopLeft = new Vector2(17.25f * customScale, 16f * customScale);
+    Vector2 uRightBottomLeft = new Vector2(17.25f * customScale, 0f * customScale);
+    Vector2 uRightBottom = new Vector2(24.13f * customScale, -4.25f * customScale);
+    Vector2 uRightBottomRight = new Vector2(31f * customScale, 0f * customScale);
+    Vector2 uRightTopRight = new Vector2(31f * customScale, 16f * customScale);
+
+	//w
+	groupsListMatrix.Add(new List<Line>(){
+		calculateLine(averageLocationOfLivingPlayers, wBottomLeft, wTopMiddle),
+		calculateLine(averageLocationOfLivingPlayers, wBottomLeft, wTopLeft),
+
+		calculateLine(averageLocationOfLivingPlayers, wBottomRight, wTopRight),
+		calculateLine(averageLocationOfLivingPlayers, wBottomRight, wTopMiddle)	
+	});
+
+	//U
+	groupsListMatrix.Add(new List<Line>(){
+		//columns
+		calculateLine(averageLocationOfLivingPlayers, uLeftTopLeft, uLeftBottomLeft),
+		calculateLine(averageLocationOfLivingPlayers, uLeftTopRight, uLeftBottomRight),
+
+		calculateLine(averageLocationOfLivingPlayers, uRightTopLeft, uRightBottomLeft),
+		calculateLine(averageLocationOfLivingPlayers, uRightTopRight, uRightBottomRight),
+		
+		//semicircles
+		calculateLine(averageLocationOfLivingPlayers, uLeftBottom, uLeftBottomRight),
+		calculateLine(averageLocationOfLivingPlayers, uLeftBottom, uLeftBottomLeft),
+
+		calculateLine(averageLocationOfLivingPlayers, uRightBottom, uRightBottomRight),
+		calculateLine(averageLocationOfLivingPlayers, uRightBottom, uRightBottomLeft)
+
+	});
+
+
+	allLinesHaveBeenAdded = true;
+
+	//lines timers
+	//All 3 animation groups have 4 lines
+	//timeInMilisecondsBetWeenEachLoop, (numberOfLinesInGroup/numberOfTimers * numberOfPointsPerLine) + 1
+	//w animators
+	//startTimer(1, (4 * 10) + 1, "Animate");
+	startTimer(1, (3 * 10) + 1, "Animate");
+	startTimer(1, (3 * 10) + 1, "Animate");
+	startTimer(1, (3 * 10) + 1, "Animate");
+	startTimer(1, (3 * 10) + 1, "Animate");		
+}
+
+//This creates a line between startCoordinates and endCoordinates using plrpos as the center of the plane
+public Line calculateLine(Vector2 plrpos, Vector2 startCoordinates, Vector2 endCoordinates){
+	
+	//create a line between startCoordinates and endCoordinates, using prlpos as the reference point
+	Line line = new Line(
+		new Vector2(plrpos.X + startCoordinates.X, plrpos.Y + startCoordinates.Y), 
+		new Vector2(plrpos.X + endCoordinates.X, plrpos.Y + endCoordinates.Y)
+	);
+
+	return line;
+}
+
+public void startTimer(int timerSpeed, int skillLength, string functionNameCallback){
+	IObjectTimerTrigger timer = (IObjectTimerTrigger)Game.CreateObject("TimerTrigger");
+	timer.SetIntervalTime(timerSpeed);
+	timer.SetRepeatCount(skillLength);
+	timer.SetScriptMethod(functionNameCallback);
+	timer.Trigger();
+}
+
+public void OnUserMessage(UserMessageCallbackArgs args) {
+	if (args.IsCommand){
+		if(args.Command == "EGO"){
+			if(args.User.IsModerator){
+				string[] a = args.CommandArguments.Split();
+				switch(a[0]){
+					case "help":
+						Game.ShowChatMessage("/ego particle <particle> - Set the particle that the animations will use.", tealGreen);
+						Game.ShowChatMessage("/ego animation <animation> - Select an animation.", tealGreen);
+						Game.ShowChatMessage("/ego scale <number> - Change the scale of the animations.", tealGreen);
+						Game.ShowChatMessage("/ego message - Toggle the round-start message.", tealGreen);
+						Game.ShowChatMessage("/ego settings - View the current settings.", tealGreen);
+						Game.ShowChatMessage("/ego reset - Reset the settings to default.", tealGreen);
+					break;
+
+					case "particle":
+						String[] availableParticles = {"ACS", "Block", "BLD", "TR_B", "BulletHit", "BulletHitCloth", "BulletHitDefault", "BulletHitDirt", "BulletHitMetal", "BulletHitMoney", "BulletHitPaper", "BulletHitWood", "CSW", "CL_H", "DISS", "DestroyCloth", "DestroyDefault", "DestroyGlass", "DestroyMetal", "DestroyPaper", "DestroyWood", "DIG", "TR_D", "Electric", "EXP", "FIRE", "FNDTRA", "FNDTRG", "TR_F", "GIB", "G_P", "GR_D", "ImpactDefault", "ImpactPaper", "GLM", "HIT_B", "HIT_S", "HIT_U", "PPR_D", "PLRB", "F_S", "H_T", "Smack", "TR_S", "S_P", "STM", "WS", "W_P"};
+						
+						if(a.Length == 2){
+							if (availableParticles.Contains(a[1])){
+								particle = a[1];
+								Game.ShowChatMessage("EGO: Particle set to \"" + particle + "\"", Color.Green);
+
+							} else {
+								Game.ShowChatMessage("EGO: Invalid particle selected.", Color.Red);
+								displayAvailableParticles();
+							}
+						} else {
+							displayAvailableParticles();
+						}
+						
+
+						
+					break;
+
+					case "scale":
+						try {
+							//if the user input is a greater than 0 valid float...
+							if (float.Parse(a[1]) > 0f){
+								//set it
+								scale = float.Parse(a[1]);
+							}
+
+							Game.ShowChatMessage("EGO: Scale set to \"" + scale + "\"", Color.Green);
+
+						} catch {
+							Game.ShowChatMessage("EGO: Scale must be a positive number!", Color.Red);
+						}
+						
+					break;
+
+					case "animation":
+						String[] availableAnimations = {"pentagram","triangle", "cube", "uwu"};
+						if (a.Length == 2) {
+							a[1] = a[1].ToLower();
+
+							if(availableAnimations.Contains(a[1])){
+
+								animation = a[1];
+								Game.ShowChatMessage("EGO: Animation has been set to " + animation, Color.Green);
+
+							} else {
+								Game.ShowChatMessage("EGO: Invalid animation.", Color.Red);
+								displayAvailableAnimations();
+							}
+
+						} else {
+							displayAvailableAnimations();
+						}
+					break;
+
+					case "message":
+						//change settings
+						roundStartMessageIsMuted = !roundStartMessageIsMuted;
+						//add change to storage
+						Game.LocalStorage.SetItem("roundStartMessageIsMuted", roundStartMessageIsMuted);
+
+						Game.ShowChatMessage("EGO: The round start reminder has been toggled.", Color.Green);
+					break;
+
+					case "settings":
+						Game.ShowChatMessage("EGO: These are the current settings:", Color.Green);
+						Game.ShowChatMessage("Scale: " + scale.ToString(), Color.Yellow);
+						Game.ShowChatMessage("Particle: " + particle, Color.Yellow);
+						Game.ShowChatMessage("Animation: " + animation, Color.Yellow);
+						Game.ShowChatMessage("Message: " + roundStartMessageIsMuted.ToString(), Color.Yellow);
+
+					break;
+
+					case "reset":
+						resetSettings();
+						Game.ShowChatMessage("EGO: The settings have been reset to default.", Color.Green);
+					break;
+				}
+			} else {
+				Game.ShowChatMessage("EGO: ERROR - " + args.User.Name + "/" + args.User.AccountID + ":" + args.User.AccountName + " is not a moderator!", Color.Red);	
+			}
+		}
+	}
+}
+
+public void displayAvailableAnimations(){
+	Game.ShowChatMessage("The available animations are: ", Color.Green);
+	Game.ShowChatMessage("- Pentagram", tealGreen);
+	Game.ShowChatMessage("- Triangle", tealGreen);
+	Game.ShowChatMessage("- Cube", tealGreen);
+	Game.ShowChatMessage("- UwU", tealGreen);
+}
+
+public void displayAvailableParticles(){
+	Game.ShowChatMessage("The available particles are: ", Color.Green);
+	Game.ShowChatMessage("AcidSplash = \"ACS\"", tealGreen); 
+	Game.ShowChatMessage("Block = \"Block\"", tealGreen); 
+	Game.ShowChatMessage("Blood = \"BLD\"", tealGreen); 
+	Game.ShowChatMessage("BloodTrail = \"TR_B\"", tealGreen); 
+	Game.ShowChatMessage("BulletHit = \"BulletHit\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitCloth = \"BulletHitCloth\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitDefault = \"BulletHitDefault\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitDirt = \"BulletHitDirt\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitMetal = \"BulletHitMetal\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitMoney = \"BulletHitMoney\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitPaper = \"BulletHitPaper\"", tealGreen); 
+	Game.ShowChatMessage("BulletHitWood = \"BulletHitWood\"", tealGreen); 
+	Game.ShowChatMessage("ChainsawSmoke = \"CSW\"", tealGreen); 
+	Game.ShowChatMessage("ClothHit = \"CL_H\"", tealGreen); 
+	Game.ShowChatMessage("CloudDissolve = \"DISS\"", tealGreen); 
+	Game.ShowChatMessage("DestroyCloth = \"DestroyCloth\"", tealGreen); 
+	Game.ShowChatMessage("DestroyDefault = \"DestroyDefault\"", tealGreen); 
+	Game.ShowChatMessage("DestroyGlass = \"DestroyGlass\"", tealGreen); 
+	Game.ShowChatMessage("DestroyMetal = \"DestroyMetal\"", tealGreen); 
+	Game.ShowChatMessage("DestroyPaper = \"DestroyPaper\"", tealGreen); 
+	Game.ShowChatMessage("DestroyWood = \"DestroyWood\"", tealGreen); 
+	Game.ShowChatMessage("Dig = \"DIG\"", tealGreen); 
+	Game.ShowChatMessage("DustTrail = \"TR_D\"", tealGreen); 
+	Game.ShowChatMessage("Electric = \"Electric\"", tealGreen); 
+	Game.ShowChatMessage("Explosion = \"EXP\"", tealGreen); 
+	Game.ShowChatMessage("Fire = \"FIRE\"", tealGreen); 
+	Game.ShowChatMessage("FireNodeTrailAir = \"FNDTRA\"", tealGreen); 
+	Game.ShowChatMessage("FireNodeTrailGround = \"FNDTRG\"", tealGreen); 
+	Game.ShowChatMessage("FireTrail = \"TR_F\"", tealGreen); 
+	Game.ShowChatMessage("Gib = \"GIB\"", tealGreen); 
+	Game.ShowChatMessage("GlassParticles = \"G_P\"", tealGreen); 
+	Game.ShowChatMessage("GrenadeDud = \"GR_D\"", tealGreen); 
+	Game.ShowChatMessage("ImpactDefault = \"ImpactDefault\"", tealGreen); 
+	Game.ShowChatMessage("ImpactPaper = \"ImpactPaper\"", tealGreen); 
+	Game.ShowChatMessage("ItemGleam = \"GLM\"", tealGreen); 
+	Game.ShowChatMessage("MeleeHitBlunt = \"HIT_B\"", tealGreen); 
+	Game.ShowChatMessage("MeleeHitSharp = \"HIT_S\"", tealGreen); 
+	Game.ShowChatMessage("MeleeHitUnarmed = \"HIT_U\"", tealGreen); 
+	Game.ShowChatMessage("PaperDestroyed = \"PPR_D\"", tealGreen); 
+	Game.ShowChatMessage("PlayerBurned = \"PLRB\"", tealGreen); 
+	Game.ShowChatMessage("PlayerFootstep = \"F_S\"", tealGreen); 
+	Game.ShowChatMessage("PlayerLandFull = \"H_T\"", tealGreen); 
+	Game.ShowChatMessage("Smack = \"Smack\"", tealGreen); 
+	Game.ShowChatMessage("SmokeTrail = \"TR_S\"", tealGreen); 
+	Game.ShowChatMessage("Sparks = \"S_P\"", tealGreen); 
+	Game.ShowChatMessage("Steam = \"STM\"", tealGreen); 
+	Game.ShowChatMessage("WaterSplash = \"WS\"", tealGreen); 
+	Game.ShowChatMessage("WoodParticles = \"W_P\"", tealGreen); 
+}
+
+public void loadLocalStorage(){
+	//no need to check that ALL settings load correctly. Checking the first one will suffice.
+	if (!Game.LocalStorage.TryGetItemFloat("scale", out scale)){ 
+		resetSettings();
+	} else {
+		Game.LocalStorage.TryGetItemString("particle", out particle);
+		Game.LocalStorage.TryGetItemBool("roundStartMessageIsMuted", out roundStartMessageIsMuted);
+		Game.LocalStorage.TryGetItemString("animation", out animation);
+
+
+		//scale should be a positive number
+		//particle shouldn't be an empty string
+		if(
+			scale < 0 ||
+			particle == ""	
+		){
+			resetSettings();
+			Game.ShowChatMessage("EGO: The configuration contains invalid values; It may have been tampered with. The configuration has been reset to default.", Color.Red);
+		}
+	}
+}
+
+
+//reset local storage settings
+public void resetSettings(){
+	float scale = 2f;
+	string particle = "FIRE";
+	bool roundStartMessageIsMuted = false;
+	string animation = "pentagram";
+	
+	Game.LocalStorage.SetItem("scale", scale);
+	Game.LocalStorage.SetItem("particle", particle);
+	Game.LocalStorage.SetItem("roundStartMessageIsMuted", roundStartMessageIsMuted);
+	Game.LocalStorage.SetItem("animation", animation);
+
+	loadLocalStorage();
+}
