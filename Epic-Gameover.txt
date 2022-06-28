@@ -60,6 +60,7 @@ float scale = 2.0f;
 string animation = "pentagram";
 //There's a probability of 1 in "probability" minus 1 that the event will trigger.
 int probability = 10;
+string opItemList = "KATANA UZI FIREAMMO LAZER GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
 
 
 //We use this to get the points in a line
@@ -206,20 +207,16 @@ public void GameOverCallBack(TriggerArgs args) {
 				//no point in giving op weapons to bots.
 				if(!player.IsBot){
 					//Give them OP weapons
-					
-						IUser playerUser = player.GetUser();
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " KATANA");
-											
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " UZI");
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " FIREAMMO");
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " LAZER");
+					IUser playerUser = player.GetUser();
 
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " GRENADE_LAUNCHER");
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " FIREAMMO");
-											
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " GRENADES");
-
-						Game.ShowChatMessage("/give " + playerUser.GameSlotIndex.ToString() + " SPEEDBOOST");
+					//I've though about more efficient ways of doing this, but localstorage can only save single strings, not string arrays, so this'll have to do.
+					//I wanted to use "/give 0 9 24 grenade_launcher 67" but appearently you can't /give multiple items in a single command :/ 
+					string[] opItemListArray = opItemList.Split();
+					//foreach item in opItemList...
+					for(ushort itemCounter=0; itemCounter<opItemListArray.Length; itemCounter++){
+						// /give player item
+						Game.RunCommand("/give " + playerUser.GameSlotIndex.ToString() + " " + opItemListArray[itemCounter]);
+					}
 				}
 				
 			}
@@ -601,6 +598,7 @@ public void OnUserMessage(UserMessageCallbackArgs args) {
 						Game.ShowChatMessage("/ego animation <animation> - Select an animation.", tealGreen);
 						Game.ShowChatMessage("/ego scale <number> - Change the scale of the animations.", tealGreen);
 						Game.ShowChatMessage("/ego probability <number> - Change the probability of 1 in X that this script will trigger.", tealGreen);
+						Game.ShowChatMessage("/ego opitems <itemslist> - Change what items will be given to the winners. You can put the full name or the IDs of items.", tealGreen);
 						Game.ShowChatMessage("/ego message - Toggle the round-start message.", tealGreen);
 						Game.ShowChatMessage("/ego settings - View the current settings.", tealGreen);
 						Game.ShowChatMessage("/ego reset - Reset the settings to default.", tealGreen);
@@ -691,6 +689,20 @@ public void OnUserMessage(UserMessageCallbackArgs args) {
 						}
 					break;
 
+					case "opitems":
+						if (a[1] != ""){
+							if(isValidWeaponsList(a)){
+								//Remove "opitems" from the string[] before saving
+								opItemList = args.CommandArguments.Remove(0,8);
+								//add change to storage
+								Game.LocalStorage.SetItem("EGO_opItemList", opItemList);
+								Game.ShowChatMessage("EGO: OP Items list updated.", Color.Green);
+							} else {
+								Game.ShowChatMessage("EGO: Invalid items selected!", Color.Red);
+							}
+						}
+					break;
+
 					case "message":
 						//change settings
 						roundStartMessageIsMuted = !roundStartMessageIsMuted;
@@ -707,6 +719,7 @@ public void OnUserMessage(UserMessageCallbackArgs args) {
 						Game.ShowChatMessage("Animation: " + animation, Color.Yellow);
 						Game.ShowChatMessage("Message: " + roundStartMessageIsMuted.ToString(), Color.Yellow);
 						Game.ShowChatMessage("Probability: "+  probability.ToString(), Color.Yellow);
+						Game.ShowChatMessage("OPItems: " + opItemList, Color.Yellow);
 
 					break;
 
@@ -782,6 +795,48 @@ public void displayAvailableParticles(){
 	Game.ShowChatMessage("WoodParticles = \"W_P\"", tealGreen); 
 }
 
+
+public bool isValidWeaponsList(string[] weaponsList){
+	string[] weaponNames = {"PISTOL", "MAGNUM", "SHOTGUN", "KATANA", "PIPE", "TOMMYGUN", "M60", "MACHETE", "SNIPER", "SAWED_OFF", "BAT", "UZI", "PILLS", "MEDKIT", "SLOWMO_5", "SLOWMO_10", "BAZOOKA", "AXE", "ASSAULT", "GRENADES", "LAZER", "CARBINE", "MOLOTOVS", "FLAMETHROWER", "FLAREGUN", "REVOLVER", "GRENADE_LAUNCHER", "SMG", "SUB_MACHINEGUN", "HAMMER", "CHAIR", "CHAIR_LEG", "BOTTLE", "BROKEN_BOTTLE", "CUESTICK", "CUESTICK_SHAFT", "SUITCASE", "SILENCEDPISTOL", "SILENCEDUZI", "BATON", "C4", "C4DETONATOR", "MINES", "SHURIKEN", "CHAIN", "PILLOW", "FLAGPOLE", "KNIFE", "TEAPOT", "TRASHCAN_LID", "TRASH_BAG", "MACHINE_PISTOL", "DARK_SHOTGUN", "MP50", "LEAD_PIPE", "SHOCK_BATON", "BASEBALL", "CHAINSAW", "PISTOL45", "STRENGTHBOOST", "SPEEDBOOST", "BOW", "WHIP", "BOUNCINGAMMO", "FIREAMMO"};
+	ushort[] weaponIDs = {1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67};
+
+	ushort currentWeaponAsUshort;
+
+	Game.ShowChatMessage("weaponsList.Length: " + weaponsList.Length.ToString());
+
+	//foreach weapon in weaponsList
+	//we start at 1 to skip "opitems"
+	for(ushort weaponsListIndex = 1; weaponsListIndex < weaponsList.Length; weaponsListIndex++){
+		Game.ShowChatMessage("weaponsListIndex: " + weaponsListIndex.ToString());
+
+		//Save the current weapon in uppercase.
+		//weaponNames has all names in uppercase.
+		string currentWeapon = weaponsList[weaponsListIndex].ToUpper();
+
+		try {
+			currentWeaponAsUshort = ushort.Parse(currentWeapon);
+		} catch {
+			currentWeaponAsUshort = ushort.MaxValue;
+		}
+
+		Game.ShowChatMessage("currentWeaponAsUshort: " + currentWeaponAsUshort.ToString());
+		Game.ShowChatMessage("currentWeapon: " + currentWeapon);
+
+		Game.ShowChatMessage("weaponIDs.Contains(currentWeaponAsUshort): " + weaponIDs.Contains(currentWeaponAsUshort).ToString());
+		Game.ShowChatMessage("weaponNames.Contains(currentWeapon): "+ weaponNames.Contains(currentWeapon).ToString());
+
+		//If the current element isn't contained in any array...
+		if(!(
+			weaponIDs.Contains(currentWeaponAsUshort) || 
+			weaponNames.Contains(currentWeapon)
+			)) {
+			return false;
+		}
+	}
+	//if no invalid weapon was detected...
+	return true;
+}
+
 public void loadLocalStorage(){
 	//no need to check that ALL settings load correctly. Checking the first one will suffice.
 	if (!Game.LocalStorage.TryGetItemFloat("EGO_scale", out scale)){ 
@@ -791,14 +846,15 @@ public void loadLocalStorage(){
 		Game.LocalStorage.TryGetItemBool("EGO_roundStartMessageIsMuted", out roundStartMessageIsMuted);
 		Game.LocalStorage.TryGetItemString("EGO_animation", out animation);
 		Game.LocalStorage.TryGetItemInt("EGO_probability", out probability);
+		Game.LocalStorage.TryGetItemString("EGO_opItemList", out opItemList);
 
-		//scale should be a positive number
-		//particle shouldn't be an empty string
+		//Check that all values are valid
 		if(
 			scale < 0 ||
 			particle == ""  ||
 			animation == "" ||
-			probability <= 0
+			probability <= 0 ||
+			opItemList == ""
 			){
 			resetSettings();
 			Game.ShowChatMessage("EGO: The configuration contains invalid values; It may have been tampered with. The configuration has been reset to default.", Color.Red);
@@ -814,12 +870,14 @@ public void resetSettings(){
 	bool roundStartMessageIsMuted = false;
 	string animation = "pentagram";
 	int probability = 10;
+	string opItemList = "KATANA UZI FIREAMMO LAZER GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
 	
 	Game.LocalStorage.SetItem("EGO_scale", scale);
 	Game.LocalStorage.SetItem("EGO_particle", particle);
 	Game.LocalStorage.SetItem("EGO_roundStartMessageIsMuted", roundStartMessageIsMuted);
 	Game.LocalStorage.SetItem("EGO_animation", animation);
 	Game.LocalStorage.SetItem("EGO_probability", probability);
+	Game.LocalStorage.SetItem("EGO_opItemList", opItemList);
 
 	loadLocalStorage();
 }
