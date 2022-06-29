@@ -1,0 +1,47 @@
+Superfighters Deluxe v.1.3.7d - Unhandled Error
+Status: GameOffline, False, GameOffline
+GraphicsDeviceStatus: Normal
+
+013914-05: function 'GameOverCallBack' was unresponsive. Terminating execution.
+013913-05: Method with signature 'GameOverCallBack(TriggerArgs)' failed in script 'CS\CUSTOM\A.TXT'
+013912-99: Script: Method 'GameOverCallBack(TriggerArgs)' error in script 'CS\CUSTOM\A.TXT'
+013911-01: Running command 'give 0 FIREAMMO'
+013910-04: jaja q kreisi received Uzi
+013909-01: Running command 'give 0 UZI'
+013908-04: jaja q kreisi received Katana
+013907-01: Running command 'give 0 KATANA'
+013906-03: Script: Script CS\CUSTOM\A.TXT_245 is no longer loaded. Can't run method GameOverCallBack(TriggerArgs).
+013905-02: Player lower fire rank to 0
+
+GameWorld.UpdateGameOver() failed
+> Exception:
+Exception of type 'SFD.GameWorldCorruptedException' was thrown. 
+> TargetSite:
+Boolean CallScriptInner(SandboxInstance, System.String, Boolean, System.Object[])
+> Source:
+Superfighters Deluxe
+> StackTrace:
+   at SFD.GameWorld.CallScriptInner(SandboxInstance script, String method, Boolean showError, Object[] args)
+   at SFD.GameWorld.CallScriptInstance(String uniqueScriptInstanceID, String method, Boolean showError, Object[] args)
+   at SFD.Objects.ObjectTriggerBaseHelper.CheckScriptTriggerMethodToRunOK(BaseObject caller, BaseObject sender, ObjectPropertyID scriptPropertyID, TriggerArgs args)
+   at SFD.Objects.ObjectOnGameOverTrigger.TriggerNode(BaseObject sender)
+   at SFD.GameWorld.RunOnGameOverTriggers()
+   at SFD.GameWorld.UpdateGameOver(Single ms)
+> FullException:
+SFD.GameWorldCorruptedException: Exception of type 'SFD.GameWorldCorruptedException' was thrown.
+   at SFD.GameWorld.CallScriptInner(SandboxInstance script, String method, Boolean showError, Object[] args)
+   at SFD.GameWorld.CallScriptInstance(String uniqueScriptInstanceID, String method, Boolean showError, Object[] args)
+   at SFD.Objects.ObjectTriggerBaseHelper.CheckScriptTriggerMethodToRunOK(BaseObject caller, BaseObject sender, ObjectPropertyID scriptPropertyID, TriggerArgs args)
+   at SFD.Objects.ObjectOnGameOverTrigger.TriggerNode(BaseObject sender)
+   at SFD.GameWorld.RunOnGameOverTriggers()
+   at SFD.GameWorld.UpdateGameOver(Single ms)
+
+
+Additional data
+arch:x86, archWOW:AMD64
+OS:Microsoft Windows NT 6.2.9200.0
+ 
+A crash report has been generated.
+If you see this error often, make sure your game is up-to-date, started correctly and all files are intact.
+
+Do you want to send the crash report?

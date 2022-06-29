@@ -60,7 +60,7 @@ float scale = 2.0f;
 string animation = "pentagram";
 //There's a probability of 1 in "probability" minus 1 that the event will trigger.
 int probability = 10;
-string opItemList = "KATANA UZI FIREAMMO LAZER GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
+string opItemList = "KATANA UZI FIREAMMO Laser_Sight GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
 
 
 //We use this to get the points in a line
@@ -797,17 +797,14 @@ public void displayAvailableParticles(){
 
 
 public bool isValidWeaponsList(string[] weaponsList){
-	string[] weaponNames = {"PISTOL", "MAGNUM", "SHOTGUN", "KATANA", "PIPE", "TOMMYGUN", "M60", "MACHETE", "SNIPER", "SAWED_OFF", "BAT", "UZI", "PILLS", "MEDKIT", "SLOWMO_5", "SLOWMO_10", "BAZOOKA", "AXE", "ASSAULT", "GRENADES", "LAZER", "CARBINE", "MOLOTOVS", "FLAMETHROWER", "FLAREGUN", "REVOLVER", "GRENADE_LAUNCHER", "SMG", "SUB_MACHINEGUN", "HAMMER", "CHAIR", "CHAIR_LEG", "BOTTLE", "BROKEN_BOTTLE", "CUESTICK", "CUESTICK_SHAFT", "SUITCASE", "SILENCEDPISTOL", "SILENCEDUZI", "BATON", "C4", "C4DETONATOR", "MINES", "SHURIKEN", "CHAIN", "PILLOW", "FLAGPOLE", "KNIFE", "TEAPOT", "TRASHCAN_LID", "TRASH_BAG", "MACHINE_PISTOL", "DARK_SHOTGUN", "MP50", "LEAD_PIPE", "SHOCK_BATON", "BASEBALL", "CHAINSAW", "PISTOL45", "STRENGTHBOOST", "SPEEDBOOST", "BOW", "WHIP", "BOUNCINGAMMO", "FIREAMMO"};
+	string[] weaponNames = {"PISTOL", "MAGNUM", "SHOTGUN", "KATANA", "PIPE", "TOMMYGUN", "M60", "MACHETE", "SNIPER", "SAWED_OFF", "BAT", "UZI", "PILLS", "MEDKIT", "SLOWMO_5", "SLOWMO_10", "BAZOOKA", "AXE", "ASSAULT", "GRENADES", "Laser_Sight", "CARBINE", "MOLOTOVS", "FLAMETHROWER", "FLAREGUN", "REVOLVER", "GRENADE_LAUNCHER", "SMG", "SUB_MACHINEGUN", "HAMMER", "CHAIR", "CHAIR_LEG", "BOTTLE", "BROKEN_BOTTLE", "CUESTICK", "CUESTICK_SHAFT", "SUITCASE", "SILENCEDPISTOL", "SILENCEDUZI", "BATON", "C4", "C4DETONATOR", "MINES", "SHURIKEN", "CHAIN", "PILLOW", "FLAGPOLE", "KNIFE", "TEAPOT", "TRASHCAN_LID", "TRASH_BAG", "MACHINE_PISTOL", "DARK_SHOTGUN", "MP50", "LEAD_PIPE", "SHOCK_BATON", "BASEBALL", "CHAINSAW", "PISTOL45", "STRENGTHBOOST", "SPEEDBOOST", "BOW", "WHIP", "BOUNCINGAMMO", "FIREAMMO"};
 	ushort[] weaponIDs = {1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 27, 28, 29, 30, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 67};
 
 	ushort currentWeaponAsUshort;
 
-	Game.ShowChatMessage("weaponsList.Length: " + weaponsList.Length.ToString());
-
 	//foreach weapon in weaponsList
 	//we start at 1 to skip "opitems"
 	for(ushort weaponsListIndex = 1; weaponsListIndex < weaponsList.Length; weaponsListIndex++){
-		Game.ShowChatMessage("weaponsListIndex: " + weaponsListIndex.ToString());
 
 		//Save the current weapon in uppercase.
 		//weaponNames has all names in uppercase.
@@ -818,12 +815,6 @@ public bool isValidWeaponsList(string[] weaponsList){
 		} catch {
 			currentWeaponAsUshort = ushort.MaxValue;
 		}
-
-		Game.ShowChatMessage("currentWeaponAsUshort: " + currentWeaponAsUshort.ToString());
-		Game.ShowChatMessage("currentWeapon: " + currentWeapon);
-
-		Game.ShowChatMessage("weaponIDs.Contains(currentWeaponAsUshort): " + weaponIDs.Contains(currentWeaponAsUshort).ToString());
-		Game.ShowChatMessage("weaponNames.Contains(currentWeapon): "+ weaponNames.Contains(currentWeapon).ToString());
 
 		//If the current element isn't contained in any array...
 		if(!(
@@ -870,7 +861,7 @@ public void resetSettings(){
 	bool roundStartMessageIsMuted = false;
 	string animation = "pentagram";
 	int probability = 10;
-	string opItemList = "KATANA UZI FIREAMMO LAZER GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
+	string opItemList = "KATANA UZI FIREAMMO Laser_Sight GRENADE_LAUNCHER FIREAMMO GRENADES SPEEDBOOST FIREAMMO";
 	
 	Game.LocalStorage.SetItem("EGO_scale", scale);
 	Game.LocalStorage.SetItem("EGO_particle", particle);
