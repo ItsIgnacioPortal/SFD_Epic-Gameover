@@ -195,6 +195,8 @@ public void GameOverCallBack(TriggerArgs args) {
 	//There's a probability of 1 in "probability" that the event will trigger.
 	Random rnd = new Random();
 	int num = rnd.Next(0, probability);
+	//FOR TESTING ONLY
+	num = 0;
 	if (num == 0){
 		//Get the average location of all living players
 		List<Vector2> livingPlayerLocations = new List<Vector2>();
